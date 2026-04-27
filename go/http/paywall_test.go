@@ -63,6 +63,7 @@ func TestEVMPaywallHandler_Supports(t *testing.T) {
 		{"eip155:84532", true},
 		{"solana:mainnet", false},
 		{"solana:devnet", false},
+		{"algorand:mainnet", false},
 		{"aptos:mainnet", false},
 		{"", false},
 	}
@@ -91,6 +92,7 @@ func TestSVMPaywallHandler_Supports(t *testing.T) {
 		{"solana:devnet", true},
 		{"eip155:1", false},
 		{"eip155:8453", false},
+		{"algorand:mainnet", false},
 		{"aptos:mainnet", false},
 		{"", false},
 	}
@@ -101,6 +103,35 @@ func TestSVMPaywallHandler_Supports(t *testing.T) {
 			got := handler.Supports(req)
 			if got != tt.want {
 				t.Errorf("SVMPaywallHandler.Supports(%q) = %v, want %v", tt.network, got, tt.want)
+			}
+		})
+	}
+}
+
+// --- AVMPaywallHandler tests ---
+
+func TestAVMPaywallHandler_Supports(t *testing.T) {
+	handler := &AVMPaywallHandler{}
+
+	tests := []struct {
+		network string
+		want    bool
+	}{
+		{"algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=", true},
+		{"algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=", true},
+		{"eip155:1", false},
+		{"eip155:8453", false},
+		{"solana:mainnet", false},
+		{"aptos:mainnet", false},
+		{"", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.network, func(t *testing.T) {
+			req := types.PaymentRequirements{Network: tt.network}
+			got := handler.Supports(req)
+			if got != tt.want {
+				t.Errorf("AVMPaywallHandler.Supports(%q) = %v, want %v", tt.network, got, tt.want)
 			}
 		})
 	}
@@ -209,10 +240,35 @@ func TestDefaultPaywallProvider(t *testing.T) {
 		}
 	})
 
+	t.Run("Algorand network returns non-empty HTML", func(t *testing.T) {
+		got := provider.GenerateHTML(makePaymentRequired("algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8="), nil)
+		if got == "" {
+			t.Error("expected non-empty HTML for Algorand network")
+		}
+		if !strings.Contains(got, "window.x402") {
+			t.Error("expected window.x402 config injection in HTML")
+		}
+		if !strings.Contains(got, "Algorand") {
+			t.Error("expected Algorand paywall template")
+		}
+	})
+
 	t.Run("unsupported network returns empty", func(t *testing.T) {
 		got := provider.GenerateHTML(makePaymentRequired("aptos:mainnet"), nil)
 		if got != "" {
 			t.Errorf("expected empty string for unsupported network, got length %d", len(got))
+		}
+	})
+
+	t.Run("no provider falls back to built-in AVM template", func(t *testing.T) {
+		server := Newx402HTTPResourceServer(RoutesConfig{})
+
+		got := server.generatePaywallHTMLV2(makePaymentRequired("algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8="), nil, "")
+		if got == "" {
+			t.Error("expected non-empty HTML from built-in AVM template")
+		}
+		if !strings.Contains(got, "Algorand") {
+			t.Error("expected built-in AVM template")
 		}
 	})
 }

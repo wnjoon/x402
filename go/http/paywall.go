@@ -12,7 +12,7 @@ import (
 
 // PaywallProvider generates HTML for browser-facing 402 responses.
 // Register a custom implementation via RegisterPaywallProvider to override
-// the built-in EVM/SVM templates.
+// the built-in EVM/SVM/AVM templates.
 type PaywallProvider interface {
 	GenerateHTML(paymentRequired types.PaymentRequired, config *PaywallConfig) string
 }
@@ -55,6 +55,19 @@ func (h *SVMPaywallHandler) Supports(requirement types.PaymentRequirements) bool
 // GenerateHTML generates paywall HTML using the built-in SVM template.
 func (h *SVMPaywallHandler) GenerateHTML(_ types.PaymentRequirements, paymentRequired types.PaymentRequired, config *PaywallConfig) string {
 	return injectPaywallConfig(SVMPaywallTemplate, paymentRequired, config)
+}
+
+// AVMPaywallHandler generates paywall HTML for Algorand AVM networks (algorand:*).
+type AVMPaywallHandler struct{}
+
+// Supports returns true for Algorand AVM networks (algorand:* CAIP-2 identifiers).
+func (h *AVMPaywallHandler) Supports(requirement types.PaymentRequirements) bool {
+	return strings.HasPrefix(requirement.Network, "algorand:")
+}
+
+// GenerateHTML generates paywall HTML using the built-in AVM template.
+func (h *AVMPaywallHandler) GenerateHTML(_ types.PaymentRequirements, paymentRequired types.PaymentRequired, config *PaywallConfig) string {
+	return injectPaywallConfig(AVMPaywallTemplate, paymentRequired, config)
 }
 
 // ============================================================================
@@ -117,10 +130,11 @@ func (p *compositePaywallProvider) GenerateHTML(paymentRequired types.PaymentReq
 	return ""
 }
 
-// DefaultPaywallProvider creates a PaywallProvider with built-in EVM and SVM handlers.
+// DefaultPaywallProvider creates a PaywallProvider with built-in EVM, SVM, and AVM handlers.
 func DefaultPaywallProvider() PaywallProvider {
 	return NewPaywallBuilder().
 		WithNetwork(&EVMPaywallHandler{}).
 		WithNetwork(&SVMPaywallHandler{}).
+		WithNetwork(&AVMPaywallHandler{}).
 		Build()
 }

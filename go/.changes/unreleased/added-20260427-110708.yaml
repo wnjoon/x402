@@ -1,0 +1,3 @@
+kind: added
+body: Add built-in AVM paywall selection for Algorand networks in the Go HTTP server
+time: 2026-04-27T11:07:08.544658+09:00

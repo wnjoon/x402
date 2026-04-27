@@ -921,7 +921,7 @@ func (s *x402HTTPResourceServer) generatePaywallHTMLV2(paymentRequired types.Pay
 		return s.paywallProvider.GenerateHTML(paymentRequired, config)
 	}
 
-	// Tier 3: Built-in EVM/SVM templates (default fallback)
+	// Tier 3: Built-in EVM/SVM/AVM templates (default fallback)
 	// Convert V2 to generic format to reuse existing HTML generation
 	genericRequired := x402.PaymentRequired{
 		X402Version: paymentRequired.X402Version,
@@ -1003,8 +1003,9 @@ func (s *x402HTTPResourceServer) generatePaywallHTML(paymentRequired x402.Paymen
 	return strings.Replace(template, "</head>", configScript+"\n</head>", 1)
 }
 
-// selectPaywallTemplate chooses the appropriate paywall template based on the network
-// Returns EVM template for eip155:* networks, SVM template for solana:* networks
+// selectPaywallTemplate chooses the appropriate paywall template based on the network.
+// Returns EVM template for eip155:* networks, SVM template for solana:* networks,
+// and AVM template for algorand:* networks.
 func (s *x402HTTPResourceServer) selectPaywallTemplate(paymentRequired x402.PaymentRequired) string {
 	if len(paymentRequired.Accepts) == 0 {
 		return EVMPaywallTemplate // Default to EVM
@@ -1013,6 +1014,9 @@ func (s *x402HTTPResourceServer) selectPaywallTemplate(paymentRequired x402.Paym
 	network := paymentRequired.Accepts[0].Network
 	if strings.HasPrefix(network, "solana:") {
 		return SVMPaywallTemplate
+	}
+	if strings.HasPrefix(network, "algorand:") {
+		return AVMPaywallTemplate
 	}
 	return EVMPaywallTemplate
 }
