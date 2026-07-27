@@ -810,9 +810,25 @@ func TestResolveSettlementOverrideAmount(t *testing.T) {
 			input    string
 			expected string
 		}{
+			{"$1", "1000000"},
+			{"$1.0", "1000000"},
 			{"$1.00", "1000000"},
+			{"$1.000000", "1000000"},
 			{"$0.05", "50000"},
 			{"$0.001", "1000"},
+			{"$0.000001", "1"},
+			{"$0.0000004", "0"},
+			{"$0.0000005", "0"},
+			{"$0.0000009", "0"},
+			{"$0.0000010", "1"},
+			{"$1.0000004", "1000000"},
+			{"$1.0000005", "1000000"},
+			{"$1.0000009", "1000000"},
+			{"$123456789.123456", "123456789123456"},
+			{
+				"$12345678901234567890123456789012345678901234567890123456789012345678901234567890.123456",
+				"12345678901234567890123456789012345678901234567890123456789012345678901234567890123456",
+			},
 			{"$0", "0"},
 		}
 		for _, tt := range tests {
@@ -826,14 +842,30 @@ func TestResolveSettlementOverrideAmount(t *testing.T) {
 		}
 	})
 
-	t.Run("dollar price with 8 decimals", func(t *testing.T) {
-		reqs := types.PaymentRequirements{Amount: "2000"}
-		result, err := ResolveSettlementOverrideAmount("$0.05", reqs, 8)
-		if err != nil {
-			t.Fatalf("unexpected error: %v", err)
+	t.Run("dollar prices with varying decimals", func(t *testing.T) {
+		tests := []struct {
+			input    string
+			decimals int
+			expected string
+		}{
+			{"$1.9", 0, "1"},
+			{"$0.05", 8, "5000000"},
+			{"$1.000000000000000001", 18, "1000000000000000001"},
 		}
-		if result != "5000000" {
-			t.Errorf("expected 5000000 (8 decimals), got %s", result)
+		for _, tt := range tests {
+			result, err := ResolveSettlementOverrideAmount(tt.input, baseReqs, tt.decimals)
+			if err != nil {
+				t.Errorf("ResolveSettlementOverrideAmount(%q, decimals=%d) error: %v", tt.input, tt.decimals, err)
+			}
+			if result != tt.expected {
+				t.Errorf(
+					"ResolveSettlementOverrideAmount(%q, decimals=%d) = %q, want %q",
+					tt.input,
+					tt.decimals,
+					result,
+					tt.expected,
+				)
+			}
 		}
 	})
 
