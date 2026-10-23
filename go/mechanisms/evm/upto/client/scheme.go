@@ -151,7 +151,9 @@ func (c *UptoEvmScheme) trySignErc20Approval(
 
 	tokenAddress := evm.NormalizeAddress(requirements.Asset)
 
-	if readSigner, hasRead := c.signer.(evm.ClientEvmSignerWithReadContract); hasRead &&
+	// Skip signing when Permit2 allowance is already sufficient. Best-effort: a signer
+	// resolution error falls through to the approval path, which reports missing capability.
+	if readSigner, _ := c.resolveReadSigner(ctx, string(requirements.Network)); readSigner != nil &&
 		clientutil.HasSufficientPermit2Allowance(ctx, readSigner, tokenAddress, c.signer.Address(), requirements.Amount) {
 		return nil, nil
 	}
